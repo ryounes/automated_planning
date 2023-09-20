@@ -1,0 +1,157 @@
+(define (problem p0)
+	(:domain baseline)
+
+	(:objects 
+
+		m6_p0 m4_p0 m2_p0 p0_p0 p2_p0 p4_p0 p6_p0 - position
+		
+
+		brick_blue_2x2_1 brick_blue_2x2_2 brick_blue_2x2_3 - brick2x2
+		brick_yellow_2x2_1 brick_yellow_2x2_2 brick_yellow_2x2_3 - brick2x2
+		brick_red_2x2_1 brick_red_2x2_2 brick_red_2x2_3 brick_red_2x2_4 - brick2x2
+
+		brick_red_6x2_1 - brick6x2
+
+
+		person_fred_m12_p0_p15 person_damien_p12_p0_p15 - person
+		neutral_section - section
+
+		n0 n1 n2 n3 n4 n5 n6 n7 n8 n9 n10 - numero
+
+		N - north
+		E - east
+		W - west
+		S - south
+	
+		red blue yellow - color
+	
+	)
+
+
+	(:htn
+	    :ordered-subtasks
+		    (and
+
+				(t1 (build_arch m2_p0 n3 n1 E red))
+				(t2 (build_staircase m6_p0 n2 E yellow))
+				(t3 (build_staircase p6_p0 n2 W blue))
+
+			)
+	)
+
+
+
+	(:init
+
+		;fixed
+			; next pos
+
+				(next_pos m6_p0 m4_p0) (next_pos m4_p0 m2_p0) (next_pos m2_p0 p0_p0) (next_pos p0_p0 p2_p0) 
+				(next_pos p2_p0 p4_p0) (next_pos p4_p0 p6_p0)
+				(next_pos_skip1 m6_p0 m2_p0) (next_pos_skip1 m4_p0 p0_p0) (next_pos_skip1 m2_p0 p2_p0) 
+				(next_pos_skip1 p0_p0 p4_p0) (next_pos_skip1 p2_p0 p6_p0) 
+				(next_pos_skip2 m6_p0 p0_p0) (next_pos_skip2 m4_p0 p2_p0) (next_pos_skip2 m2_p0 p4_p0)  
+				(next_pos_skip2 p0_p0 p6_p0)
+
+
+			; numbers
+				(halt n0) (plus_one n0 n1)
+				(plus_one n1 n2) (plus_one n2 n3) (plus_one n3 n4) (plus_one n4 n5) 
+				(plus_one n5 n6) (plus_one n6 n7) (plus_one n7 n8) (plus_one n8 n9) 
+				(plus_one n9 n10) 
+
+			; less than
+				(less n0 n1) (less n0 n2) (less n0 n3) (less n0 n4) (less n0 n5) (less n0 n6)
+				(less n0 n7) (less n0 n8) (less n0 n9) (less n0 n10) 
+				
+				(less n1 n2) (less n1 n3) (less n1 n4) (less n1 n5) (less n1 n6) (less n1 n7)
+				(less n1 n8) (less n1 n9) (less n1 n10) 
+				
+				(less n2 n3) (less n2 n4) (less n2 n5) (less n2 n6) (less n2 n7) (less n2 n8)
+				(less n2 n9) (less n2 n10) 
+				
+				(less n3 n4) (less n3 n5) (less n3 n6) (less n3 n7) (less n3 n8) (less n3 n9)
+				(less n3 n10) 
+				
+				(less n4 n5) (less n4 n6) (less n4 n7) (less n4 n8) (less n4 n9)
+				(less n4 n10)
+				(less n5 n6) (less n5 n7) (less n5 n8) (less n5 n9) (less n5 n10) 
+				(less n6 n7) (less n6 n8) (less n6 n9) (less n6 n10) 
+				(less n7 n8) (less n7 n9) (less n7 n10) 
+				(less n8 n9) (less n8 n10) 
+				(less n9 n10) 
+			
+
+		; person / hand_empty / section
+			(hand_empty person_fred_m12_p0_p15) 
+			(in_charge person_fred_m12_p0_p15 neutral_section) 
+
+			(hand_empty person_damien_p12_p0_p15) 
+			(in_charge person_damien_p12_p0_p15 neutral_section) 
+
+
+		; positions
+
+			(in_sec m6_p0 neutral_section) (free m6_p0)
+			(in_sec m4_p0 neutral_section) (free m4_p0)
+			(in_sec m2_p0 neutral_section) (free m2_p0)
+			(in_sec p0_p0 neutral_section) (free p0_p0)
+			(in_sec p2_p0 neutral_section) (free p2_p0)
+			(in_sec p4_p0 neutral_section) (free p4_p0)
+			(in_sec p6_p0 neutral_section) (free p6_p0)
+
+
+		; bricks
+
+			;brick2x2
+
+				; blue
+					(on_side_table brick_blue_2x2_1) 
+					(colored brick_blue_2x2_1 blue)
+
+					(on_side_table brick_blue_2x2_2) 
+					(colored brick_blue_2x2_2 blue)
+					
+					
+					(on_side_table brick_blue_2x2_3) 
+					(colored brick_blue_2x2_3 blue)
+				
+				; red 
+					(on_side_table brick_red_2x2_1) 
+					(colored brick_red_2x2_1 red)
+					
+					
+					(on_side_table brick_red_2x2_2) 
+					(colored brick_red_2x2_2 red)
+					
+					
+					(on_side_table brick_red_2x2_3) 
+					(colored brick_red_2x2_3 red)
+					
+					
+					(on_side_table brick_red_2x2_4) 
+					(colored brick_red_2x2_4 red)
+				
+				; yellow
+					(on_side_table brick_yellow_2x2_1) 
+					(colored brick_yellow_2x2_1 yellow)
+					
+					
+					(on_side_table brick_yellow_2x2_2) 
+					(colored brick_yellow_2x2_2 yellow)
+					
+					(on_side_table brick_yellow_2x2_3) 
+					(colored brick_yellow_2x2_3 yellow)
+				
+
+			;brick6x2
+				
+				; red
+					(on_side_table brick_red_6x2_1) 
+					(colored brick_red_6x2_1 red)
+				
+			
+
+
+	)
+)

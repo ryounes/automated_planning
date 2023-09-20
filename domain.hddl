@@ -1,0 +1,2141 @@
+(define (domain baseline)
+
+    (:requirements
+          :strips
+          :typing
+          :hierarchy
+          :method-preconditions
+          :negative-preconditions
+          :disjunctive-preconditions
+          :equality
+    )
+
+;----------------------------------------------------------------------
+;                               Types
+;----------------------------------------------------------------------
+
+    (:types 
+      numero - object
+      
+      brick2x2 - brick
+      brick2x4 - brick
+      brick4x2 - brick
+      brick2x6 - brick
+      brick6x2 - brick
+      brick - object
+
+      position - object
+
+      north east west south - direction
+      direction - object
+
+      section - object
+      person - agent
+      robot - agent
+
+      color - object
+    )
+
+;----------------------------------------------------------------------
+;                             Predicates
+;----------------------------------------------------------------------
+
+    (:predicates 
+
+
+      ; the color of brick1 is color1 
+        (colored ?brick1 - brick ?color1 - color)
+
+      ; num1 is smaller than num2
+        (less ?num1 - numero ?num2 - numero)
+
+      ; level of the brick n0=floor, n1=level1
+        (lvl ?brick1 - brick ?num - numero)
+
+      ; position2 comes after position1
+        (next_pos ?position1 - position ?position2 - position)
+
+      ; bottomPos is below topPos
+        (below_pos ?bottomPos - position ?topPos - position)
+
+      ; position2 comes after position1 (skip 1)
+        (next_pos_skip1 ?position1 - position ?position2 - position)
+
+      ; bottomPos is below topPos (skip 1)
+        (below_pos_skip1 ?bottomPos - position ?topPos - position)
+
+      ; position2 comes after position1 (skip 1)
+        (next_pos_skip2 ?position1 - position ?position2 - position)
+
+      ; bottomPos is below topPos (skip 1)
+        (below_pos_skip2 ?bottomPos - position ?topPos - position)
+
+      ; used for recursive count : x = y-1
+        (plus_one ?x - numero ?y - numero)
+      
+      ; used for recursive base - halt condition
+        (halt ?x - numero)
+
+      ; The position has no bricks on it
+        (free ?x - position)
+      
+      ; The brick is placed on the floor
+        (floor ?x - brick)
+
+      ; The brick is placed on the side table for later use
+        (on_side_table ?x - brick)
+      
+      ; The first brick is on top of the second
+        (on_top ?top - brick ?y - brick)
+      
+      ; The nothing over the brick on a certain position and there is nothing on top of it
+        (clear ?x - brick ?y - position)
+
+      ; The person is not holding anything
+        (hand_empty ?x - person)
+
+      ; The person is holding a certain brick
+        (holding ?x - person ?a - brick)
+
+      ; The brick is on a certain position
+        (on_pos ?brick1 - brick ?pos1 - position)
+
+      ; The position is in a certain section
+        (in_sec ?x - position ?y - section)
+
+      ; The person is in charge of a section (to pick_up/unstack from)
+        (in_charge ?x - person ?y - section)
+
+    )
+
+;----------------------------------------------------------------------
+;                               Tasks
+;----------------------------------------------------------------------
+
+    ;------------------------------------------------------------------
+    ;                      Relocating Tasks
+    ;------------------------------------------------------------------
+
+      ; The task of relocating a brick to a certain end position
+        (:task relocate
+            :parameters (?brick1 - brick ?posPut - position)
+        )
+
+    ;------------------------------------------------------------------
+    ;                   Freeing / Clearing Tasks
+    ;------------------------------------------------------------------
+
+      ; The task of freeing a place from a brick (put it aside / keep it in hand)
+        (:task free
+            :parameters (?brick1 - brick)
+        )
+
+      ; The task of unfreeing a place by placing a brick on it
+        (:task unfree
+            :parameters (?brick1 - brick ?position1 - position)
+        )
+
+      ; The task of freeing the whole position
+        (:task clear_position
+            :parameters (?position1 - position)
+        )
+
+      ; The task of freeing the whole row of positions
+        (:task clear_row
+            :parameters (?position1 - position ?count - numero)
+        )
+
+
+    ;------------------------------------------------------------------
+    ;                        Building Tasks
+    ;------------------------------------------------------------------
+    
+      ;------------------------  staircase  ------------------------------
+        
+        ;brick2x2
+          ; Building staircase 
+            (:task build_staircase
+                :parameters (?position - position ?number - numero ?direct - direction ?color1 - color)
+            )
+
+      ;------------------------  Tower  -------------------------------
+        
+        ;brick2x2
+          ; Clearing the position and Building a tower 
+            (:task build_tower_2x2
+                :parameters (?position - position ?number - numero ?color1 - color)
+            )
+
+        ;brick4x2
+          ; Clearing the position and Building a tower 
+            (:task build_tower_4x2
+                :parameters (?position - position ?number - numero ?color1 - color)
+            )
+
+        ;brick6x2
+          ; Clearing the position and Building a tower 
+            (:task build_tower_6x2
+                :parameters (?position - position ?number - numero ?color1 - color)
+            )
+
+      ;-------------------------  Row  --------------------------------
+
+        ;brick2x2
+          ; Building a row 
+            (:task build_row
+                :parameters (?position - position ?number - numero ?dir - direction ?color1 - color)
+            )
+
+      ;-------------------------  Arch  -------------------------------
+
+        ;
+          ; Building the arch extremities
+            (:task build_arch
+                :parameters (?position - position ?numRows ?numArchs - numero ?dir - direction ?color1 - color)
+            )
+
+          ; Building the internal arch 
+            (:task build_arch_rec
+                :parameters (?position - position ?numRows ?numArchs - numero ?dir - direction ?color1 - color)
+            )
+
+          ; paving an arch
+            (:task build_pavement
+                :parameters (?position - position ?numArchs - numero ?dir - direction ?color1 - color)
+            )
+
+      ;-------------------------  Wall  -------------------------------
+
+          ; Building a wall
+            (:task build_wall
+                :parameters (?position - position ?numRows ?size - numero ?dir - direction ?color1 - color)
+            )
+
+          ; Building the level -- init 
+            (:task build_odd_level
+                :parameters (?position - position ?size - numero ?dir - direction ?color1 - color)
+            )
+
+
+          ; Building the level -- rec
+            (:task build_odd_level_rec
+                :parameters (?position - position ?size - numero ?dir - direction ?color1 - color)
+            )
+
+
+          ; Building the level -- init 
+            (:task build_even_level
+                :parameters (?position - position ?size - numero ?dir - direction ?color1 - color)
+            )
+
+
+          ; Building the level -- rec
+            (:task build_even_level_rec
+                :parameters (?position - position ?size - numero ?dir - direction ?color1 - color)
+            )
+
+
+
+
+;----------------------------------------------------------------------
+;                              Actions
+;----------------------------------------------------------------------
+
+  ; brick2x2
+    ;------------------------------------------------------------------
+    ;                      Brick Aside Actions
+    ;------------------------------------------------------------------
+
+      ; Putting the brick on a side table for later use
+        (:action put_aside_2x2
+            :parameters (?brick1 - brick2x2 ?person1 - person)
+            :precondition (and 
+               (holding ?person1 ?brick1)
+            )
+            :effect
+            (and 
+              (on_side_table ?brick1)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Grabbing the brick from the side table to use
+        (:action take_back_2x2
+            :parameters (?brick1 - brick2x2 ?person1 - person)
+            :precondition (and 
+               (on_side_table ?brick1)
+               (hand_empty ?person1)
+            )
+            :effect
+            (and 
+              (not (on_side_table ?brick1))
+
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+
+    ;------------------------------------------------------------------
+    ;                    Brick Placement Actions
+    ;------------------------------------------------------------------
+
+
+      ; Putting down the brick on a position on the floor (level zero)
+        (:action put_down_2x2
+            :parameters (?brick1 - brick2x2 ?pos1 - position ?person1 - person ?section1 - section ?num - numero)
+            :precondition (and 
+               (free ?pos1) (holding ?person1 ?brick1)
+               (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+               (halt ?num)
+            )
+            :effect
+            (and 
+              (lvl ?brick1 ?num)
+              (not (free ?pos1))
+
+              (on_pos ?brick1 ?pos1)
+              (clear ?brick1 ?pos1)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Picking up the brick from a certain position from the floor (level zero)
+        (:action pick_up_2x2
+            :parameters (?brick1 - brick2x2 ?pos1 - position ?person1 - person ?section1 - section ?num - numero)
+            :precondition (and 
+              (clear ?brick1 ?pos1) (on_pos ?brick1 ?pos1) 
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (hand_empty ?person1) (halt ?num) (lvl ?brick1 ?num)
+            )
+            :effect
+            (and 
+              (free ?pos1)
+              (not (lvl ?brick1 ?num))
+
+              (not (on_pos ?brick1 ?pos1))
+              (not (clear ?brick1 ?pos1))
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+
+      ; Stacking the brick on the top of the stack 
+        (:action stack_2x2
+            :parameters (?brick1 - brick2x2 ?brick2 - brick ?pos1 - position ?person1 - person ?section1 - section ?num1 ?num2 - numero)
+            :precondition (and 
+              (clear ?brick2 ?pos1) (on_pos ?brick2 ?pos1) (holding ?person1 ?brick1)
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (lvl ?brick2 ?num1) (plus_one ?num1 ?num2)
+            )
+            :effect
+            (and 
+              (not (clear ?brick2 ?pos1))
+              (on_top ?brick1 ?brick2)
+              (lvl ?brick1 ?num2)
+
+              (on_pos ?brick1 ?pos1)
+              (clear ?brick1 ?pos1)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Unstacking the brick from the top of the stack 
+        (:action unstack_2x2
+            :parameters (?brick1 - brick2x2 ?brick2 - brick ?pos1 - position ?person1 - person ?section1 - section ?num1 - numero)
+            :precondition (and 
+              (clear ?brick1 ?pos1) (on_pos ?brick1 ?pos1) (on_top ?brick1 ?brick2)
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (hand_empty ?person1) (lvl ?brick1 ?num1)
+            )
+            :effect
+            (and 
+              (clear ?brick2 ?pos1)
+              (not (on_top ?brick1 ?brick2))
+
+              (not (lvl ?brick1 ?num1))
+              (not (on_pos ?brick1 ?pos1))
+              (not (clear ?brick1 ?pos1))
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+     
+    ;------------------------------------------------------------------
+    ;                    Person Exchange Actions
+    ;------------------------------------------------------------------
+
+      ; Handing over the brick to the person in charge of the 
+        (:action hand_over_2x2
+            :parameters (?brick1 - brick2x2 ?person1 ?person2 - person)
+            :precondition (and (hand_empty ?person2) (holding ?person1 ?brick1)
+            )
+            :effect
+            (and 
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+
+              (holding ?person2 ?brick1)
+              (not (hand_empty ?person2))
+            )
+        )
+
+
+  ; brick2x4
+    ;------------------------------------------------------------------
+    ;                      Brick Aside Actions
+    ;------------------------------------------------------------------
+
+      ; Putting the brick on a side table for later use
+        (:action put_aside_2x4
+            :parameters (?brick1 - brick2x4 ?person1 - person)
+            :precondition (and 
+               (holding ?person1 ?brick1)
+            )
+            :effect
+            (and 
+              (on_side_table ?brick1)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Grabbing the brick from the side table to use
+        (:action take_back_2x4
+            :parameters (?brick1 - brick2x4 ?person1 - person)
+            :precondition (and 
+               (on_side_table ?brick1)
+               (hand_empty ?person1)
+            )
+            :effect
+            (and 
+              (not (on_side_table ?brick1))
+
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+
+    ;------------------------------------------------------------------
+    ;                    Brick Placement Actions
+    ;------------------------------------------------------------------
+
+
+      ; Putting down the brick on a position on the floor (level zero)
+        (:action put_down_2x4
+            :parameters (?brick1 - brick2x4 ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num - numero)
+            :precondition (and 
+               (free ?pos1) (free ?pos2) (below_pos ?pos1 ?pos2)
+               (holding ?person1 ?brick1)
+               (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+               (halt ?num)
+            )
+            :effect
+            (and 
+              (lvl ?brick1 ?num)
+              (not (free ?pos1)) (not (free ?pos2))
+
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2)
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Picking up the brick from a certain position from the floor (level zero)
+        (:action pick_up_2x4
+            :parameters (?brick1 - brick2x4 ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num - numero)
+            :precondition (and 
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2) (on_pos ?brick1 ?pos1) 
+              (on_pos ?brick1 ?pos2) (below_pos ?pos1 ?pos2)
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (hand_empty ?person1) (halt ?num) (lvl ?brick1 ?num)
+            )
+            :effect
+            (and 
+              (free ?pos1) (free ?pos2)
+              (not (lvl ?brick1 ?num))
+
+              (not (on_pos ?brick1 ?pos1)) (not (on_pos ?brick1 ?pos2))
+              (not (clear ?brick1 ?pos1)) (not (clear ?brick1 ?pos2))
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+
+      ; Stacking the brick on the top of the stack 
+        (:action stack_2x4
+            :parameters (?brick1 - brick2x4 ?brick2 ?brick3 - brick ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num1 ?num2 - numero)
+            :precondition (and 
+              (clear ?brick2 ?pos1) (on_pos ?brick2 ?pos1) 
+              (clear ?brick3 ?pos2) (on_pos ?brick3 ?pos2) (below_pos ?pos1 ?pos2)
+              (holding ?person1 ?brick1)
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (lvl ?brick2 ?num1) (lvl ?brick3 ?num1) (plus_one ?num1 ?num2)
+            )
+            :effect
+            (and 
+              (not (clear ?brick2 ?pos1)) (not (clear ?brick3 ?pos2))
+              (on_top ?brick1 ?brick2) (on_top ?brick1 ?brick3)
+              (lvl ?brick1 ?num2)
+
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2)
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Unstacking the brick from the top of the stack 
+        (:action unstack_2x4
+            :parameters (?brick1 - brick2x4 ?brick2 ?brick3 - brick ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num1 - numero)
+            :precondition (and 
+              (clear ?brick1 ?pos1) (on_pos ?brick1 ?pos1) (on_top ?brick1 ?brick2)
+              (clear ?brick1 ?pos2) (on_pos ?brick1 ?pos2) (on_top ?brick1 ?brick3) 
+              (below_pos ?pos1 ?pos2)
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (hand_empty ?person1) (lvl ?brick1 ?num1)
+            )
+            :effect
+            (and 
+              (clear ?brick2 ?pos1) (clear ?brick3 ?pos2)
+              (not (on_top ?brick1 ?brick2)) (not (on_top ?brick1 ?brick3))
+
+              (not (lvl ?brick1 ?num1))
+              (not (on_pos ?brick1 ?pos1)) (not (on_pos ?brick1 ?pos2))
+              (not (clear ?brick1 ?pos1)) (not (clear ?brick1 ?pos2))
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))            )
+        )
+     
+    ;------------------------------------------------------------------
+    ;                    Person Exchange Actions
+    ;------------------------------------------------------------------
+
+      ; Handing over the brick to the person in charge of the 
+        (:action hand_over_2x4
+            :parameters (?brick1 - brick2x4 ?person1 ?person2 - person)
+            :precondition (and (hand_empty ?person2) (holding ?person1 ?brick1)
+            )
+            :effect
+            (and 
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+
+              (holding ?person2 ?brick1)
+              (not (hand_empty ?person2))
+            )
+        )
+
+
+  ; brick4x2
+    ;------------------------------------------------------------------
+    ;                      Brick Aside Actions
+    ;------------------------------------------------------------------
+
+      ; Putting the brick on a side table for later use
+        (:action put_aside_4x2
+            :parameters (?brick1 - brick4x2 ?person1 - person)
+            :precondition (and 
+               (holding ?person1 ?brick1)
+            )
+            :effect
+            (and 
+              (on_side_table ?brick1)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Grabbing the brick from the side table to use
+        (:action take_back_4x2
+            :parameters (?brick1 - brick4x2 ?person1 - person)
+            :precondition (and 
+               (on_side_table ?brick1)
+               (hand_empty ?person1)
+            )
+            :effect
+            (and 
+              (not (on_side_table ?brick1))
+
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+
+    ;------------------------------------------------------------------
+    ;                    Brick Placement Actions
+    ;------------------------------------------------------------------
+
+
+      ; Putting down the brick on a position on the floor (level zero)
+        (:action put_down_4x2
+            :parameters (?brick1 - brick4x2 ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num - numero)
+            :precondition (and 
+               (free ?pos1) (free ?pos2) (next_pos ?pos1 ?pos2)
+               (holding ?person1 ?brick1)
+               (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+               (halt ?num)
+            )
+            :effect
+            (and 
+              (lvl ?brick1 ?num)
+              (not (free ?pos1)) (not (free ?pos2))
+
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2)
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Picking up the brick from a certain position from the floor (level zero)
+        (:action pick_up_4x2
+            :parameters (?brick1 - brick4x2 ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num - numero)
+            :precondition (and 
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2) (on_pos ?brick1 ?pos1) 
+              (on_pos ?brick1 ?pos2) (next_pos ?pos1 ?pos2)
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (hand_empty ?person1) (halt ?num) (lvl ?brick1 ?num)
+            )
+            :effect
+            (and 
+              (free ?pos1) (free ?pos2)
+              (not (lvl ?brick1 ?num))
+
+              (not (on_pos ?brick1 ?pos1)) (not (on_pos ?brick1 ?pos2))
+              (not (clear ?brick1 ?pos1)) (not (clear ?brick1 ?pos2))
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+
+      ; Stacking the brick on the top of the stack 
+        (:action stack_4x2
+            :parameters (?brick1 - brick4x2 ?brick2 ?brick3 - brick ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num1 ?num2 - numero)
+            :precondition (and 
+              (clear ?brick2 ?pos1) (on_pos ?brick2 ?pos1) 
+              (clear ?brick3 ?pos2) (on_pos ?brick3 ?pos2) (next_pos ?pos1 ?pos2)
+              (holding ?person1 ?brick1)
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (lvl ?brick2 ?num1) (lvl ?brick3 ?num1) (plus_one ?num1 ?num2)
+            )
+            :effect
+            (and 
+              (not (clear ?brick2 ?pos1)) (not (clear ?brick3 ?pos2))
+              (on_top ?brick1 ?brick2) (on_top ?brick1 ?brick3)
+              (lvl ?brick1 ?num2)
+
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2)
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Unstacking the brick from the top of the stack 
+        (:action unstack_4x2
+            :parameters (?brick1 - brick4x2 ?brick2 ?brick3 - brick ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num1 - numero)
+            :precondition (and 
+              (clear ?brick1 ?pos1) (on_pos ?brick1 ?pos1) (on_top ?brick1 ?brick2)
+              (clear ?brick1 ?pos2) (on_pos ?brick1 ?pos2) (on_top ?brick1 ?brick3) 
+              (next_pos ?pos1 ?pos2)
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (hand_empty ?person1) (lvl ?brick1 ?num1)
+            )
+            :effect
+            (and 
+              (clear ?brick2 ?pos1) (clear ?brick3 ?pos2)
+              (not (on_top ?brick1 ?brick2)) (not (on_top ?brick1 ?brick3))
+
+              (not (lvl ?brick1 ?num1))
+              (not (on_pos ?brick1 ?pos1)) (not (on_pos ?brick1 ?pos2))
+              (not (clear ?brick1 ?pos1)) (not (clear ?brick1 ?pos2))
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))            )
+        )
+     
+    ;------------------------------------------------------------------
+    ;                    Person Exchange Actions
+    ;------------------------------------------------------------------
+
+      ; Handing over the brick to the person in charge of the 
+        (:action hand_over_4x2
+            :parameters (?brick1 - brick4x2 ?person1 ?person2 - person)
+            :precondition (and (hand_empty ?person2) (holding ?person1 ?brick1)
+            )
+            :effect
+            (and 
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+
+              (holding ?person2 ?brick1)
+              (not (hand_empty ?person2))
+            )
+        )
+
+
+  ; brick2x6
+    ;------------------------------------------------------------------
+    ;                      Brick Aside Actions
+    ;------------------------------------------------------------------
+
+      ; Putting the brick on a side table for later use
+        (:action put_aside_2x6
+            :parameters (?brick1 - brick2x6 ?person1 - person)
+            :precondition (and 
+               (holding ?person1 ?brick1)
+            )
+            :effect
+            (and 
+              (on_side_table ?brick1)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Grabbing the brick from the side table to use
+        (:action take_back_2x6
+            :parameters (?brick1 - brick2x6 ?person1 - person)
+            :precondition (and 
+               (on_side_table ?brick1)
+               (hand_empty ?person1)
+            )
+            :effect
+            (and 
+              (not (on_side_table ?brick1))
+
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+
+    ;------------------------------------------------------------------
+    ;                    Brick Placement Actions
+    ;------------------------------------------------------------------
+
+
+      ; Putting down the brick on a position on the floor (level zero)
+        (:action put_down_2x6
+            :parameters (?brick1 - brick2x6 ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num - numero)
+            :precondition (and 
+               (free ?pos1) (free ?pos2) (free ?pos3)
+               (below_pos ?pos1 ?pos2) (below_pos ?pos2 ?pos3)
+               (holding ?person1 ?brick1)
+               (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+               (halt ?num)
+            )
+            :effect
+            (and 
+              (lvl ?brick1 ?num)
+              (not (free ?pos1)) (not (free ?pos2)) (not (free ?pos3))
+
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2) (on_pos ?brick1 ?pos3)
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2) (clear ?brick1 ?pos3)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Picking up the brick from a certain position from the floor (level zero)
+        (:action pick_up_2x6
+            :parameters (?brick1 - brick2x6 ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num - numero)
+            :precondition (and 
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2) (clear ?brick1 ?pos3)
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2) (on_pos ?brick1 ?pos3) 
+              (below_pos ?pos1 ?pos2) (below_pos ?pos2 ?pos3)
+              
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+
+              (hand_empty ?person1) (halt ?num) (lvl ?brick1 ?num)
+            )
+            :effect
+            (and 
+              (free ?pos1) (free ?pos2) (free ?pos3)
+              (not (lvl ?brick1 ?num))
+
+              (not (on_pos ?brick1 ?pos1)) (not (clear ?brick1 ?pos1))
+              (not (on_pos ?brick1 ?pos2)) (not (clear ?brick1 ?pos2))
+              (not (on_pos ?brick1 ?pos3)) (not (clear ?brick1 ?pos3))
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+
+    ;------------------------------------------------------------------
+    ;                    Person Exchange Actions
+    ;------------------------------------------------------------------
+
+      ; Handing over the brick to the person in charge of the 
+        (:action hand_over_2x6
+            :parameters (?brick1 - brick2x6 ?person1 ?person2 - person)
+            :precondition (and (hand_empty ?person2) (holding ?person1 ?brick1)
+            )
+            :effect
+            (and 
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+
+              (holding ?person2 ?brick1)
+              (not (hand_empty ?person2))
+            )
+        )
+
+
+  ; brick6x2
+    ;------------------------------------------------------------------
+    ;                      Brick Aside Actions
+    ;------------------------------------------------------------------
+
+      ; Putting the brick on a side table for later use
+        (:action put_aside_6x2
+            :parameters (?brick1 - brick6x2 ?person1 - person)
+            :precondition (and 
+               (holding ?person1 ?brick1)
+            )
+            :effect
+            (and 
+              (on_side_table ?brick1)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Grabbing the brick from the side table to use
+        (:action take_back_6x2
+            :parameters (?brick1 - brick6x2 ?person1 - person)
+            :precondition (and 
+               (on_side_table ?brick1)
+               (hand_empty ?person1)
+            )
+            :effect
+            (and 
+              (not (on_side_table ?brick1))
+
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+
+    ;------------------------------------------------------------------
+    ;                    Brick Placement Actions
+    ;------------------------------------------------------------------
+
+
+      ; Putting down the brick on a position on the floor (level zero)
+        (:action put_down_6x2
+            :parameters (?brick1 - brick6x2 ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num - numero)
+            :precondition (and 
+               (free ?pos1) (free ?pos2) (free ?pos3)
+               (next_pos ?pos1 ?pos2) (next_pos ?pos2 ?pos3)
+               (holding ?person1 ?brick1)
+               (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+               (halt ?num)
+            )
+            :effect
+            (and 
+              (lvl ?brick1 ?num)
+              (not (free ?pos1)) (not (free ?pos2)) (not (free ?pos3))
+
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2) (on_pos ?brick1 ?pos3)
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2) (clear ?brick1 ?pos3)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+      ; Picking up the brick from a certain position from the floor (level zero)
+        (:action pick_up_6x2
+            :parameters (?brick1 - brick6x2 ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num - numero)
+            :precondition (and 
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2) (clear ?brick1 ?pos3)
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2) (on_pos ?brick1 ?pos3) 
+              (next_pos ?pos1 ?pos2) (next_pos ?pos2 ?pos3)
+              
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+
+              (hand_empty ?person1) (halt ?num) (lvl ?brick1 ?num)
+            )
+            :effect
+            (and 
+              (free ?pos1) (free ?pos2) (free ?pos3)
+              (not (lvl ?brick1 ?num))
+
+              (not (on_pos ?brick1 ?pos1)) (not (clear ?brick1 ?pos1))
+              (not (on_pos ?brick1 ?pos2)) (not (clear ?brick1 ?pos2))
+              (not (on_pos ?brick1 ?pos3)) (not (clear ?brick1 ?pos3))
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))
+            )
+        )
+
+      ; Stacking the brick on the top of the stack 
+      ; pos2 is free
+        (:action stack_free_6x2
+            :parameters (?brick1 - brick6x2 ?brick2 ?brick4 - brick ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num1 ?num2 - numero)
+            :precondition (and 
+              (clear ?brick2 ?pos1) (clear ?brick4 ?pos3) 
+              (on_pos ?brick2 ?pos1) (on_pos ?brick4 ?pos3) 
+              (next_pos ?pos1 ?pos2) (next_pos ?pos2 ?pos3) 
+              
+               
+              (free ?pos2) 
+
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+
+              (holding ?person1 ?brick1) (plus_one ?num1 ?num2)
+              (lvl ?brick2 ?num1) (lvl ?brick4 ?num1)
+            )
+            :effect
+            (and 
+              (not (free ?pos2))
+              (not (clear ?brick2 ?pos1)) (not (clear ?brick4 ?pos3))
+              (on_top ?brick1 ?brick2) (on_top ?brick1 ?brick4)
+              (lvl ?brick1 ?num2)
+
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2) (on_pos ?brick1 ?pos3)
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2) (clear ?brick1 ?pos3)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+
+      ; Stacking the brick on the top of the stack 
+      ; encompasses all variations on pos2 where pos2 is not free
+        (:action stack_notfree_6x2
+            :parameters (?brick1 - brick6x2 ?brick2 ?brick3 ?brick4 - brick ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num1 ?num2 ?numTmp - numero)
+            :precondition (and 
+              (clear ?brick2 ?pos1) (clear ?brick4 ?pos3) 
+              (on_pos ?brick2 ?pos1) (on_pos ?brick4 ?pos3) 
+              (next_pos ?pos1 ?pos2) (next_pos ?pos2 ?pos3) 
+              
+
+              (clear ?brick3 ?pos2) (lvl ?brick3 ?numTmp) (less ?numTmp ?num2)
+
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+
+              (holding ?person1 ?brick1) (plus_one ?num1 ?num2)
+              (lvl ?brick2 ?num1) (lvl ?brick4 ?num1)
+            )
+            :effect
+            (and 
+              (not (clear ?brick2 ?pos1)) (not (clear ?brick3 ?pos2)) (not (clear ?brick4 ?pos3))
+              (on_top ?brick1 ?brick2) (on_top ?brick1 ?brick3) (on_top ?brick1 ?brick4)
+              (lvl ?brick1 ?num2)
+
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2) (on_pos ?brick1 ?pos3)
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2) (clear ?brick1 ?pos3)
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+            )
+        )
+
+
+      ; Unstacking the brick from the top of the stack 
+      ; under ?brick1 pos2 is not free
+        (:action unstack_notfree_6x2
+            :parameters (?brick1 - brick6x2 ?brick2 ?brick3 ?brick4 - brick ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num1 - numero)
+            :precondition (and 
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2) (on_pos ?brick1 ?pos3)
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2) (clear ?brick1 ?pos3)
+              (on_top ?brick1 ?brick2) (on_top ?brick1 ?brick3) (on_top ?brick1 ?brick4)
+
+              (next_pos ?pos1 ?pos2) (next_pos ?pos2 ?pos3)
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (hand_empty ?person1) (lvl ?brick1 ?num1)
+            )
+            :effect
+            (and 
+              (clear ?brick2 ?pos1) (clear ?brick3 ?pos2) (clear ?brick4 ?pos3)
+              (not (on_top ?brick1 ?brick2)) (not (on_top ?brick1 ?brick3))
+              (not (on_top ?brick1 ?brick4))
+
+              (not (lvl ?brick1 ?num1))
+              (not (on_pos ?brick1 ?pos1)) (not (clear ?brick1 ?pos1)) 
+              (not (on_pos ?brick1 ?pos2)) (not (clear ?brick1 ?pos2))
+              (not (on_pos ?brick1 ?pos3)) (not (clear ?brick1 ?pos3))
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))            )
+        )
+
+      ; Unstacking the brick from the top of the stack 
+      ; under ?brick1 pos2 is free
+        (:action unstack_free_6x2
+            :parameters (?brick1 - brick6x2 ?brick2 ?brick4 - brick ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num1 - numero)
+            :precondition (and 
+              (on_pos ?brick1 ?pos1) (on_pos ?brick1 ?pos2) (on_pos ?brick1 ?pos3)
+              (clear ?brick1 ?pos1) (clear ?brick1 ?pos2) (clear ?brick1 ?pos3)
+              (on_top ?brick1 ?brick2) (on_top ?brick1 ?brick4)
+
+              (next_pos ?pos1 ?pos2) (next_pos ?pos2 ?pos3)
+              (in_sec ?pos1 ?section1) (in_charge ?person1 ?section1)
+              (hand_empty ?person1) (lvl ?brick1 ?num1)
+            )
+            :effect
+            (and 
+              (free ?pos2)
+              (clear ?brick2 ?pos1) (clear ?brick4 ?pos3)
+              (not (on_top ?brick1 ?brick2)) (not (on_top ?brick1 ?brick4))
+
+              (not (lvl ?brick1 ?num1))
+              (not (on_pos ?brick1 ?pos1)) (not (clear ?brick1 ?pos1)) 
+              (not (on_pos ?brick1 ?pos2)) (not (clear ?brick1 ?pos2))
+              (not (on_pos ?brick1 ?pos3)) (not (clear ?brick1 ?pos3))
+              (holding ?person1 ?brick1)
+              (not (hand_empty ?person1))            )
+        )
+
+     
+    ;------------------------------------------------------------------
+    ;                    Person Exchange Actions
+    ;------------------------------------------------------------------
+
+      ; Handing over the brick to the person in charge of the 
+        (:action hand_over_6x2
+            :parameters (?brick1 - brick6x2 ?person1 ?person2 - person)
+            :precondition (and (hand_empty ?person2) (holding ?person1 ?brick1)
+            )
+            :effect
+            (and 
+              (not (holding ?person1 ?brick1))
+              (hand_empty ?person1)
+
+              (holding ?person2 ?brick1)
+              (not (hand_empty ?person2))
+            )
+        )
+
+
+;----------------------------------------------------------------------
+;                              Methods
+;----------------------------------------------------------------------
+
+    ;------------------------------------------------------------------
+    ;                       Building Methods
+    ;------------------------------------------------------------------
+
+
+      ;--------------------  build_arch_East  -------------------------
+
+        ; building arch simple
+          (:method build_arch_simple
+              :parameters   (?pos1 ?pos2 - position ?numLvl ?numArchs ?less ?lvl - numero ?dir - east ?color1 - color)
+              :task (build_arch ?pos1 ?numLvl ?numArchs ?dir ?color1)
+              :precondition (and
+                
+                (halt ?less) (plus_one ?less ?numArchs)
+                (plus_one ?lvl ?numLvl)
+                (next_pos_skip1 ?pos1 ?pos2)
+                
+              )
+              :ordered-subtasks (and
+                  (build_tower_2x2 ?pos1 ?lvl ?color1)
+                  (build_tower_2x2 ?pos2 ?lvl ?color1)
+                  (build_pavement ?pos1 ?numArchs ?dir ?color1) 
+              )
+          )
+
+
+        ; building arch complex
+          (:method build_arch_complex
+              :parameters   (?pos1 ?pos2 - position ?numLvl ?numArchs ?less ?lvl - numero ?dir - east ?color1 - color)
+              :task (build_arch ?pos1 ?numLvl ?numArchs ?dir ?color1)
+              :precondition (and
+                
+                (not (halt ?less)) (plus_one ?less ?numArchs)
+                (plus_one ?lvl ?numLvl)
+                (next_pos_skip1 ?pos1 ?pos2)
+                
+              )
+              :ordered-subtasks (and
+                  (build_tower_2x2 ?pos1 ?lvl ?color1)
+                  (build_arch_rec ?pos2 ?lvl ?numArchs ?dir ?color1)
+                  (build_pavement ?pos1 ?numArchs ?dir ?color1)
+              )
+          )
+
+
+        ; building arch rec base
+          (:method build_arch_rec_base
+              :parameters   (?pos1 - position ?numLvl ?numArchs ?less - numero ?dir - east ?color1 - color)
+              :task (build_arch_rec ?pos1 ?numLvl ?numArchs ?dir ?color1)
+              :precondition (and
+                
+                (halt ?less) (plus_one ?less ?numArchs)
+                
+              )
+              :ordered-subtasks (and
+                  (build_tower_2x2 ?pos1 ?numLvl ?color1)
+              )
+          )
+
+
+        ; building arch rec loop
+          (:method build_arch_rec_loop
+              :parameters   (?pos1 ?pos2 - position ?numLvl ?numArchs ?less - numero ?dir - east ?color1 - color)
+              :task (build_arch_rec ?pos1 ?numLvl ?numArchs ?dir ?color1)
+              :precondition (and
+                
+                (not (halt ?less)) (plus_one ?less ?numArchs)
+                (next_pos_skip2 ?pos1 ?pos2)
+                
+              )
+              :ordered-subtasks (and
+                  (build_tower_4x2 ?pos1 ?numLvl ?color1)
+                  (build_arch_rec ?pos2 ?numLvl ?less ?dir ?color1)
+              )
+          )
+
+        
+        ; pave arch base (builds the road of the arch)
+          (:method build_pavement_rec_base
+              :parameters   (?brick1 - brick6x2 ?pos1 - position ?numArchs ?less - numero ?dir - east ?color1 - color)
+              :task (build_pavement ?pos1 ?numArchs ?dir ?color1)
+              :precondition (and
+                
+                (colored ?brick1 ?color1)
+                (halt ?less) (plus_one ?less ?numArchs)
+                
+              )
+              :ordered-subtasks (and
+                  (unfree ?brick1 ?pos1)
+              )
+          )
+        
+        ; pave arch loop (builds the road of the arch)
+          (:method build_pavement_rec_loop
+              :parameters   (?brick1 - brick6x2 ?pos1 ?pos2 - position ?numArchs ?less - numero ?dir - east ?color1 - color)
+              :task (build_pavement ?pos1 ?numArchs ?dir ?color1)
+              :precondition (and
+                
+                (colored ?brick1 ?color1)
+                (not (halt ?less)) (plus_one ?less ?numArchs)
+                (next_pos_skip2 ?pos1 ?pos2)
+                
+              )
+              :ordered-subtasks (and
+                  (unfree ?brick1 ?pos1)
+                  (build_pavement ?pos2 ?less ?dir ?color1)
+              )
+          )
+
+ 
+      ;--------------------  build_wall_East  -------------------------
+
+        ; building wall last level
+          (:method build_wall_base_one
+              :parameters   (?pos1 - position ?numLvl ?size ?lvl - numero ?dir - east ?color1 - color)
+              :task (build_wall ?pos1 ?numLvl ?size ?dir ?color1)
+              :precondition (and
+                
+                (halt ?lvl) (plus_one ?lvl ?numLvl)
+
+              )
+              :ordered-subtasks (and
+                  (build_odd_level ?pos1 ?size ?dir ?color1)
+              )
+          )
+
+        ; building wall last two levels
+          (:method build_wall_base_two
+              :parameters   (?pos1 - position ?numLvl ?size ?lvl ?tmp - numero ?dir - east ?color1 - color)
+              :task (build_wall ?pos1 ?numLvl ?size ?dir ?color1)
+              :precondition (and
+                
+                (halt ?lvl) (plus_one ?lvl ?tmp) (plus_one ?tmp ?numLvl)
+
+              )
+              :ordered-subtasks (and
+                  (build_odd_level ?pos1 ?size ?dir ?color1)
+                  (build_even_level ?pos1 ?size ?dir ?color1)
+              )
+          )
+
+        ; building wall loop
+          (:method build_wall_loop
+              :parameters   (?pos1 - position ?numLvl ?size ?lvl ?tmp - numero ?dir - east ?color1 - color)
+              :task (build_wall ?pos1 ?numLvl ?size ?dir ?color1)
+              :precondition (and
+                
+                (not (halt ?lvl)) (plus_one ?lvl ?tmp) (plus_one ?tmp ?numLvl)
+
+              )
+              :ordered-subtasks (and
+                  (build_odd_level ?pos1 ?size ?dir ?color1)
+                  (build_even_level ?pos1 ?size ?dir ?color1)
+                  (build_wall ?pos1 ?lvl ?size ?dir ?color1)
+              )
+          )
+
+
+        ; building odd level -- init
+          (:method build_odd_level_init
+              :parameters   (?brick1 - brick2x2 ?pos1 ?pos2 - position ?size - numero ?dir - east ?color1 - color)
+              :task (build_odd_level ?pos1 ?size ?dir ?color1)
+              :precondition (and
+                  (colored ?brick1 ?color1) (next_pos ?pos1 ?pos2)
+              )
+              :ordered-subtasks (and
+                  (unfree ?brick1 ?pos1) 
+                  (build_odd_level_rec ?pos2 ?size ?dir ?color1)
+              )
+          )
+
+        ; building odd level -- base
+          (:method build_odd_level_rec_base
+              :parameters   (?brick1 - brick4x2 ?brick2 - brick2x2 ?pos1 ?pos2 - position ?size ?less - numero ?dir - east ?color1 - color)
+              :task (build_odd_level_rec ?pos1 ?size ?dir ?color1)
+              :precondition (and
+                
+                (colored ?brick1 ?color1) (colored ?brick2 ?color1)
+                (next_pos_skip1 ?pos1 ?pos2)
+                (halt ?less) (plus_one ?less ?size)
+
+              )
+              :ordered-subtasks (and
+                  (unfree ?brick1 ?pos1) 
+                  (unfree ?brick2 ?pos2) 
+              )
+          )
+
+        ; building odd level -- loop
+          (:method build_odd_level_rec_loop
+              :parameters   (?brick1 - brick4x2 ?pos1 ?pos2 - position ?size ?halt ?less - numero ?dir - east ?color1 - color)
+              :task (build_odd_level_rec ?pos1 ?size ?dir ?color1)
+              :precondition (and
+                
+                (colored ?brick1 ?color1)
+                (next_pos_skip1 ?pos1 ?pos2)
+                (not (halt ?less)) (plus_one ?less ?size)
+
+              )
+              :ordered-subtasks (and
+                  (unfree ?brick1 ?pos1) 
+                  (build_odd_level_rec ?pos2 ?less ?dir ?color1)
+              )
+          )
+
+
+
+        ; building even level -- init
+          (:method build_even_level_init
+              :parameters   (?brick1 - brick4x2 ?pos1 ?pos2 - position ?size - numero ?dir - east ?color1 - color)
+              :task (build_even_level ?pos1 ?size ?dir ?color1)
+              :precondition (and
+                  (colored ?brick1 ?color1) (next_pos_skip1 ?pos1 ?pos2)
+              )
+              :ordered-subtasks (and
+                  (unfree ?brick1 ?pos1) 
+                  (build_even_level_rec ?pos2 ?size ?dir ?color1)
+              )
+          )
+
+
+        ; building even level -- base
+          (:method build_even_level_rec_base
+              :parameters   (?brick1 - brick4x2 ?pos1 ?pos2 - position ?size ?less - numero ?dir - east ?color1 - color)
+              :task (build_even_level_rec ?pos1 ?size ?dir ?color1)
+              :precondition (and
+                
+                (colored ?brick1 ?color1) 
+                (next_pos_skip1 ?pos1 ?pos2)
+                (halt ?less) (plus_one ?less ?size)
+
+              )
+              :ordered-subtasks (and
+                  (unfree ?brick1 ?pos1) 
+              )
+          )
+
+        ; building even level -- loop
+          (:method build_even_level_rec_loop
+              :parameters   (?brick1 - brick4x2 ?pos1 ?pos2 - position ?size ?halt ?less - numero ?dir - east ?color1 - color)
+              :task (build_even_level_rec ?pos1 ?size ?dir ?color1)
+              :precondition (and
+                
+                (colored ?brick1 ?color1)
+                (next_pos_skip1 ?pos1 ?pos2)
+                (not (halt ?less)) (plus_one ?less ?size)
+
+              )
+              :ordered-subtasks (and
+                  (unfree ?brick1 ?pos1) 
+                  (build_even_level_rec ?pos2 ?less ?dir ?color1)
+              )
+          )
+
+        
+        
+
+
+      ; Staircase / Row / Tower  --  brick2x2
+        ;------------------  build_staircase_East  -------------------------
+
+
+          ; building staircase 
+            (:method build_staircase_rec_base_East_2x2
+                :parameters   (?brick1 - brick2x2 ?pos1 - position ?numLvl ?less - numero ?direction - east ?color1 - color)
+                :task (build_staircase ?pos1 ?numLvl ?direction ?color1)
+                :precondition (and
+                  
+                  (colored ?brick1 ?color1)
+                  (halt ?less) (plus_one ?less ?numLvl)
+                  
+                )
+                :ordered-subtasks (and
+                    (unfree ?brick1 ?pos1) 
+                )
+            )
+
+          ; building staircase 
+            (:method build_staircase_rec_loop_East_2x2
+                :parameters   (?pos1 ?pos2 - position ?numLvl ?less - numero ?direction - east ?color1 - color)
+                :task (build_staircase ?pos1 ?numLvl ?direction ?color1)
+                :precondition (and
+                  
+                  
+                  (not (halt ?less)) (plus_one ?less ?numLvl)
+                  (next_pos ?pos1 ?pos2)
+                  
+                )
+                :ordered-subtasks (and
+                    (build_row ?pos1 ?numLvl ?direction ?color1)
+                    (build_staircase ?pos2 ?less ?direction ?color1)
+
+                )
+            )
+
+        ;------------------  build_staircase_West  -------------------------
+
+
+          ; building staircase 
+            (:method build_staircase_rec_base_West_2x2
+                :parameters   (?brick1 - brick2x2 ?pos1 - position ?numLvl ?less - numero ?direction - west ?color1 - color)
+                :task (build_staircase ?pos1 ?numLvl ?direction ?color1)
+                :precondition (and
+                  
+                  (colored ?brick1 ?color1)
+                  (halt ?less) (plus_one ?less ?numLvl)
+                  
+                )
+                :ordered-subtasks (and
+                    (unfree ?brick1 ?pos1) 
+                )
+            )
+
+          ; building staircase 
+            (:method build_staircase_rec_loop_West_2x2
+                :parameters   (?pos1 ?pos2 - position ?numLvl ?less - numero ?direction - west ?color1 - color)
+                :task (build_staircase ?pos1 ?numLvl ?direction ?color1)
+                :precondition (and
+                  
+                  
+                  (not (halt ?less)) (plus_one ?less ?numLvl)
+                  (next_pos ?pos2 ?pos1)
+                  
+                )
+                :ordered-subtasks (and
+                    (build_row ?pos1 ?numLvl ?direction ?color1)
+                    (build_staircase ?pos2 ?less ?direction ?color1)
+
+                )
+            )
+       
+        ;------------------  build_staircase_North  ------------------------
+
+
+          ; building staircase 
+            (:method build_staircase_rec_base_North_2x2
+                :parameters   (?brick1 - brick2x2 ?pos1 - position ?numLvl ?less - numero ?direction - north ?color1 - color)
+                :task (build_staircase ?pos1 ?numLvl ?direction ?color1)
+                :precondition (and
+                  
+                  (colored ?brick1 ?color1)
+                  (halt ?less) (plus_one ?less ?numLvl)
+                  
+                )
+                :ordered-subtasks (and
+                    (unfree ?brick1 ?pos1) 
+                )
+            )
+
+          ; building staircase 
+            (:method build_staircase_rec_loop_North_2x2
+                :parameters   (?pos1 ?pos2 - position ?numLvl ?less - numero ?direction - north ?color1 - color)
+                :task (build_staircase ?pos1 ?numLvl ?direction ?color1)
+                :precondition (and
+                  
+                  
+                  (not (halt ?less)) (plus_one ?less ?numLvl)
+                  (below_pos ?pos1 ?pos2)
+                  
+                )
+                :ordered-subtasks (and
+                    (build_row ?pos1 ?numLvl ?direction ?color1)
+                    (build_staircase ?pos2 ?less ?direction ?color1)
+
+                )
+            )   
+
+        ;------------------  build_staircase_South  ------------------------
+
+
+          ; building staircase 
+            (:method build_staircase_rec_base_South_2x2
+                :parameters   (?brick1 - brick2x2 ?pos1 - position ?numLvl ?less - numero ?direction - south ?color1 - color)
+                :task (build_staircase ?pos1 ?numLvl ?direction ?color1)
+                :precondition (and
+                  
+                  (colored ?brick1 ?color1)
+                  (halt ?less) (plus_one ?less ?numLvl)
+                  
+                )
+                :ordered-subtasks (and
+                    (unfree ?brick1 ?pos1) 
+                )
+            )
+
+          ; building staircase 
+            (:method build_staircase_rec_loop_South_2x2
+                :parameters   (?pos1 ?pos2 - position ?numLvl ?less - numero ?direction - south ?color1 - color)
+                :task (build_staircase ?pos1 ?numLvl ?direction ?color1)
+                :precondition (and
+                  
+                  
+                  (not (halt ?less)) (plus_one ?less ?numLvl)
+                  (below_pos ?pos2 ?pos1)
+                  
+                )
+                :ordered-subtasks (and
+                    (build_row ?pos1 ?numLvl ?direction ?color1)
+                    (build_staircase ?pos2 ?less ?direction ?color1)
+
+                )
+            )
+
+
+        ;------------------  Row_Building_East  -------------------------
+
+          ; just doing unfree so far and not relocate
+
+          ; recursive [base]
+            (:method build_row_rec_base_East_2x2
+                :parameters   (?position1 - position ?less ?count - numero ?brick1 - brick2x2 ?dir - east ?color1 - color)
+                :task (build_row ?position1 ?count ?dir ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (halt ?less) 
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                )
+            )
+
+          ; recursive [loop]
+            (:method build_row_rec_loop_East_2x2
+                :parameters   (?position1 ?next - position ?less ?count - numero ?brick1 - brick2x2 ?dir - east ?color1 - color)
+                :task (build_row ?position1 ?count ?dir ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (not (halt ?less)) (next_pos ?position1 ?next)
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                  (build_row ?next ?less ?dir ?color1)
+                )
+            )
+
+        ;------------------  Row_Building_West  -------------------------
+
+          ; just doing unfree so far and not relocate
+
+          ; recursive [base]
+            (:method build_row_rec_base_West_2x2
+                :parameters   (?position1 - position ?less ?count - numero ?brick1 - brick2x2 ?dir - west ?color1 - color)
+                :task (build_row ?position1 ?count ?dir ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (halt ?less) 
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                )
+            )
+
+          ; recursive [loop]
+            (:method build_row_rec_loop_West_2x2
+                :parameters   (?position1 ?next - position ?less ?count - numero ?brick1 - brick2x2 ?dir - west ?color1 - color)
+                :task (build_row ?position1 ?count ?dir ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (not (halt ?less)) (next_pos ?next ?position1)
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                  (build_row ?next ?less ?dir ?color1)
+                )
+            )
+
+        ;------------------  Row_Building_North  ------------------------
+
+          ; just doing unfree so far and not relocate
+
+          ; recursive [base]
+            (:method build_row_rec_base_North_2x2
+                :parameters   (?position1 - position ?less ?count - numero ?brick1 - brick2x2 ?dir - north ?color1 - color)
+                :task (build_row ?position1 ?count ?dir ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (halt ?less) 
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                )
+            )
+
+          ; recursive [loop]
+            (:method build_row_rec_loop_North_2x2
+                :parameters   (?position1 ?next - position ?less ?count - numero ?brick1 - brick2x2 ?dir - North ?color1 - color)
+                :task (build_row ?position1 ?count ?dir ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (not (halt ?less)) (below_pos ?position1 ?next)
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                  (build_row ?next ?less ?dir ?color1)
+                )
+            )
+
+        ;------------------  Row_Building_South  ------------------------
+
+          ; just doing unfree so far and not relocate
+
+          ; recursive [base]
+            (:method build_row_rec_base_South_2x2
+                :parameters   (?position1 - position ?less ?count - numero ?brick1 - brick2x2 ?dir - south ?color1 - color)
+                :task (build_row ?position1 ?count ?dir ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (halt ?less) 
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                )
+            )
+
+          ; recursive [loop]
+            (:method build_row_rec_loop_South_2x2
+                :parameters   (?position1 ?next - position ?less ?count - numero ?brick1 - brick2x2 ?dir - south ?color1 - color)
+                :task (build_row ?position1 ?count ?dir ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (not (halt ?less)) (below_pos ?next ?position1)
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                  (build_row ?next ?less ?dir ?color1)
+                )
+            )
+       
+        
+        ;-----------------  Tower_Building_Unfree  -----------------------
+
+          ; recursive [base]
+            (:method build_tower_rec_base_unfree_2x2
+                :parameters   (?position1 - position ?less ?count - numero ?brick1 - brick2x2 ?color1 - color)
+                :task (build_tower_2x2 ?position1 ?count ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (halt ?less) (not (on_pos ?brick1 ?position1))
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                )
+            )
+
+          ; recursive [loop]
+            (:method build_tower_rec_loop_unfree_2x2
+                :parameters   (?position1 - position ?less ?count - numero ?brick1 - brick2x2 ?color1 - color)
+                :task (build_tower_2x2 ?position1 ?count ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (not (halt ?less)) (not (on_pos ?brick1 ?position1))
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                  (build_tower_2x2 ?position1 ?less ?color1)
+                )
+            )
+
+      ; Tower  --  brick4x2
+        ;-----------------  Tower_Building_Unfree  -----------------------
+
+          ; recursive [base]
+            (:method build_tower_rec_base_unfree_4x2
+                :parameters   (?position1 - position ?less ?count - numero ?brick1 - brick4x2 ?color1 - color)
+                :task (build_tower_4x2 ?position1 ?count ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (halt ?less) (not (on_pos ?brick1 ?position1))
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                )
+            )
+
+          ; recursive [loop]
+            (:method build_tower_rec_loop_unfree_4x2
+                :parameters   (?position1 - position ?less ?count - numero ?brick1 - brick4x2 ?color1 - color)
+                :task (build_tower_4x2 ?position1 ?count ?color1)
+                :precondition (and
+                  (colored ?brick1 ?color1)
+                  (plus_one ?less ?count) (not (halt ?less)) (not (on_pos ?brick1 ?position1))
+                )
+                :ordered-subtasks (and
+                  (unfree ?brick1 ?position1)
+                  (build_tower_4x2 ?position1 ?less ?color1)
+                )
+          )
+
+  
+      ; brick2x4
+  
+
+      ; brick6x2
+
+      
+      ; brick2x6
+  
+
+    ;------------------------------------------------------------------
+    ;                     NON-Building Methods
+    ;------------------------------------------------------------------
+
+
+      ; Other Methods  --  brick2x2
+        ;------------------------------------------------------------------
+        ;                       Freeing Methods
+        ;------------------------------------------------------------------
+       
+          ;----------------------  clear_row  -----------------------------
+
+            ; notFree_recursive [base]
+              (:method clear_row_base_notFree_2x2
+                  :parameters   (?position1 - position ?count ?less - numero)
+                  :task (clear_row ?position1 ?count)
+                  :precondition (and
+                    (not (free ?position1)) 
+                    (plus_one ?less ?count) (halt ?less)
+                  )
+                  :ordered-subtasks (and
+                    (clear_position ?position1)
+                  )
+              )
+
+            ; free_recursive [base]
+              (:method clear_row_base_free_2x2
+                  :parameters   (?position1 - position ?count ?less - numero)
+                  :task (clear_row ?position1 ?count)
+                  :precondition (and
+                    (free ?position1)
+                    (plus_one ?less ?count) (halt ?less)
+                  )
+                  :ordered-subtasks ()
+              )
+
+            ; notFree_recursive [loop]
+              (:method clear_row_loop_notFree_2x2
+                  :parameters   (?position1 ?next - position ?count ?less - numero)
+                  :task (clear_row ?position1 ?count)
+                  :precondition (and
+                    (not (free ?position1)) (next_pos ?position1 ?next)
+                    (plus_one ?less ?count) (not (halt ?less))
+                  )
+                  :ordered-subtasks (and
+                    (clear_position ?position1)
+                    (clear_row ?next ?less)
+                  )
+              )
+
+            ; free_recursive [loop]
+              (:method clear_row_loop_free_2x2
+                  :parameters   (?position1 ?next - position ?count ?less - numero)
+                  :task (clear_row ?position1 ?count)
+                  :precondition (and
+                    (free ?position1) (next_pos ?position1 ?next)
+                    (plus_one ?less ?count) (not (halt ?less))
+                  )
+                  :ordered-subtasks (and
+                    (clear_row ?next ?less)
+                  )
+              )
+
+          ;--------------------  clear_position  --------------------------
+
+            ; recursive [base]
+              (:method clear_position_base_2x2
+                  :parameters   (?position1 - position ?num - numero ?brick1 - brick2x2)
+                  :task (clear_position ?position1)
+                  :precondition (and
+                    (halt ?num)(lvl ?brick1 ?num) (on_pos ?brick1 ?position1) (clear ?brick1 ?position1)
+                  )
+                  :ordered-subtasks (and
+                    (free ?brick1)
+                  )
+              )
+
+            ; recursive [loop]
+              (:method clear_position_loop_2x2
+                  :parameters   (?position1 - position ?num - numero ?brick1 - brick2x2)
+                  :task (clear_position ?position1)
+                  :precondition (and
+                    (halt ?num) (not (lvl ?brick1 ?num)) (on_pos ?brick1 ?position1) (clear ?brick1 ?position1)
+                  )
+                  :ordered-subtasks (and
+                    (free ?brick1)
+                    (clear_position ?position1)
+                  )
+              )
+       
+          ;----------------  free_pickUp_keepInHand  ----------------------
+
+            ; pick_up mode -> preconditions row 1
+            ; keep in hand -> preconditions row 2
+              (:method free_pickUp_keepInHand_2x2
+                  :parameters   (?brick1 - brick2x2 ?posGet - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (halt ?num1)(lvl ?brick1 ?num1) (clear ?brick1 ?posGet)
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) (on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (pick_up_2x2 ?brick1 ?posGet ?person1 ?section1 ?num1)
+                  )
+              )
+       
+          ;-----------------  free_pickUp_putAside  -----------------------
+
+            ; pick_up mode -> preconditions row 1
+            ; put aside -> no conditions
+              (:method free_pickUp_putAside_2x2
+                  :parameters   (?brick1 - brick2x2 ?posGet - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (halt ?num1)(lvl ?brick1 ?num1) (clear ?brick1 ?posGet)
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) (on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (pick_up_2x2 ?brick1 ?posGet ?person1 ?section1 ?num1)
+                      (put_aside_2x2 ?brick1 ?person1)
+                  )
+              )
+
+          ;----------------  free_unstack_keepInHand  ---------------------
+
+            ; unstack mode -> preconditions row 1
+            ; keep in hand -> no conditions
+              (:method free_unstack_keepInHand_2x2
+                  :parameters   (?brick1 - brick2x2 ?brick2 - brick ?posGet - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (clear ?brick1 ?posGet) (on_top ?brick1 ?brick2) (on_pos ?brick1 ?posGet) (lvl ?brick1 ?num1)
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) 
+                    ;(on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (unstack_2x2 ?brick1 ?brick2 ?posGet ?person1 ?section1 ?num1)
+                  )
+              )
+       
+          ;-----------------  free_unstack_putAside  ----------------------
+
+            ; unstack mode -> preconditions row 1
+            ; put aside -> no conditions
+              (:method free_unstack_putAside_2x2
+                  :parameters   (?brick1 - brick2x2 ?brick2 - brick ?posGet - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (clear ?brick1 ?posGet) (on_top ?brick1 ?brick2) (on_pos ?brick1 ?posGet) (lvl ?brick1 ?num1)
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) 
+                    ;(on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (unstack_2x2 ?brick1 ?brick2 ?posGet ?person1 ?section1 ?num1)
+                      (put_aside_2x2 ?brick1 ?person1)
+                  )
+              )
+
+        ;------------------------------------------------------------------
+        ;                      UnFreeing Methods
+        ;------------------------------------------------------------------
+       
+          ;--------------------  unfree_putdown  --------------------------
+
+            ; put down mode -> preconditions row 1
+              (:method unfree_putdown_2x2
+                  :parameters   (?brick1 - brick2x2 ?position1 - position ?person1 - person ?section1 - section ?num - numero)
+                  :task (unfree ?brick1 ?position1)
+                  :precondition (and
+                    (free ?position1) (halt ?num)
+                    (on_side_table ?brick1)
+                    (in_charge ?person1 ?section1) 
+                    (in_sec ?position1 ?section1) (hand_empty ?person1)
+                  )
+                  :ordered-subtasks (and
+                    (take_back_2x2 ?brick1 ?person1)
+                    (put_down_2x2 ?brick1 ?position1 ?person1 ?section1 ?num)
+                  )
+              )
+
+          ;---------------------  unfree_stack  ---------------------------
+
+            ; stack mode -> preconditions row 1
+              (:method unfree_stack_2x2
+                  :parameters   (?brick1 - brick2x2 ?brick2 - brick ?position1 - position ?person1 - person ?section1 - section ?num1 ?num2 - numero)
+                  :task (unfree ?brick1 ?position1)
+                  :precondition (and
+                    (on_pos ?brick2 ?position1) (clear ?brick2 ?position1) 
+                    (plus_one ?num1 ?num2) (lvl ?brick2 ?num1)
+                    (on_side_table ?brick1)
+                    (in_charge ?person1 ?section1) 
+                    (in_sec ?position1 ?section1) (hand_empty ?person1)
+                  )
+                  :ordered-subtasks (and
+                    (take_back_2x2 ?brick1 ?person1)
+                    (stack_2x2 ?brick1 ?brick2 ?position1 ?person1 ?section1 ?num1 ?num2)
+                  )
+              )
+       
+
+      ; Other Methods  --  brick2x4
+
+        ;------------------------------------------------------------------
+        ;                       Freeing Methods
+        ;------------------------------------------------------------------
+        
+          ;----------------  free_pickUp_keepInHand  ----------------------
+
+            ; pick_up mode -> preconditions row 1
+            ; keep in hand -> preconditions row 2
+              (:method free_pickUp_keepInHand_2x4
+                  :parameters   (?brick1 - brick2x4 ?posGet ?pos2 - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (halt ?num1)(lvl ?brick1 ?num1) (clear ?brick1 ?posGet) 
+                    (below_pos ?posGet ?pos2) (clear ?brick1 ?pos2)
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) (on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (pick_up_2x4 ?brick1 ?posGet ?pos2 ?person1 ?section1 ?num1)
+                  )
+              )
+       
+          ;-----------------  free_pickUp_putAside  -----------------------
+
+            ; pick_up mode -> preconditions row 1
+            ; put aside -> no conditions
+              (:method free_pickUp_putAside_2x4
+                  :parameters   (?brick1 - brick2x4 ?posGet ?pos2 - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (halt ?num1)(lvl ?brick1 ?num1) (clear ?brick1 ?posGet)
+                    (below_pos ?posGet ?pos2) (clear ?brick1 ?pos2)
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) (on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (pick_up_2x4 ?brick1 ?posGet ?pos2 ?person1 ?section1 ?num1)
+                      (put_aside_2x4 ?brick1 ?person1)
+                  )
+              )
+
+          ;----------------  free_unstack_keepInHand  ---------------------
+
+            ; unstack mode -> preconditions row 1
+            ; keep in hand -> no conditions
+              (:method free_unstack_keepInHand_2x4
+                  :parameters   (?brick1 - brick2x4 ?brick2 ?brick3 - brick ?posGet ?pos2 - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (clear ?brick1 ?posGet) (on_pos ?brick1 ?posGet) (lvl ?brick1 ?num1)
+                    (on_top ?brick1 ?brick2) 
+                    (clear ?brick1 ?pos2) (on_pos ?brick1 ?pos2) (on_top ?brick1 ?brick3) 
+                    (below_pos ?posGet ?pos2) 
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) 
+                    ;(on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (unstack_2x4 ?brick1 ?brick2 ?brick3 ?posGet ?pos2 ?person1 ?section1 ?num1)
+                  )
+              )
+       
+          ;-----------------  free_unstack_putAside  ----------------------
+
+            ; unstack mode -> preconditions row 1
+            ; put aside -> no conditions
+              (:method free_unstack_putAside_2x4
+                  :parameters   (?brick1 - brick2x4 ?brick2 ?brick3 - brick ?posGet ?pos2 - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (clear ?brick1 ?posGet) (on_pos ?brick1 ?posGet) (lvl ?brick1 ?num1)
+                    (on_top ?brick1 ?brick2) 
+                    (clear ?brick1 ?pos2) (on_pos ?brick1 ?pos2) (on_top ?brick1 ?brick3) 
+                    (below_pos ?posGet ?pos2) 
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) 
+                    ;(on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (unstack_2x4 ?brick1 ?brick2 ?brick3 ?posGet ?pos2 ?person1 ?section1 ?num1)
+                      (put_aside_2x4 ?brick1 ?person1)
+                  )
+              )
+
+        ;------------------------------------------------------------------
+        ;                      UnFreeing Methods
+        ;------------------------------------------------------------------
+       
+          ;--------------------  unfree_putdown  --------------------------
+
+            ; put down mode -> preconditions row 1
+              (:method unfree_putdown_2x4
+                  :parameters   (?brick1 - brick2x4 ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num - numero)
+                  :task (unfree ?brick1 ?pos1)
+                  :precondition (and
+                    (free ?pos1) (free ?pos2) (below_pos ?pos1 ?pos2) (halt ?num)
+                    (on_side_table ?brick1)
+                    (in_charge ?person1 ?section1) 
+                    (in_sec ?pos1 ?section1) (hand_empty ?person1)
+                  )
+                  :ordered-subtasks (and
+                    (take_back_2x4 ?brick1 ?person1)
+                    (put_down_2x4 ?brick1 ?pos1 ?pos2 ?person1 ?section1 ?num)
+                  )
+              )
+
+          ;---------------------  unfree_stack  ---------------------------
+
+            ; stack mode -> preconditions row 1
+              (:method unfree_stack_2x4
+                  :parameters   (?brick1 - brick2x4 ?brick2 ?brick3 - brick ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num1 ?num2 - numero)
+                  :task (unfree ?brick1 ?pos1)
+                  :precondition (and
+                    (clear ?brick2 ?pos1) (clear ?brick3 ?pos2)
+                    (below_pos ?pos1 ?pos2)
+                    (plus_one ?num1 ?num2) (lvl ?brick2 ?num1) (lvl ?brick3 ?num1)
+                    (on_side_table ?brick1)
+                    (in_charge ?person1 ?section1) 
+                    (in_sec ?pos1 ?section1) (hand_empty ?person1)
+                  )
+                  :ordered-subtasks (and
+                    (take_back_2x4 ?brick1 ?person1)
+                    (stack_2x4 ?brick1 ?brick2 ?brick3 ?pos1 ?pos2 ?person1 ?section1 ?num1 ?num2)
+                  )
+              )
+       
+
+      ; Other Methods  --  brick4x2
+
+        ;------------------------------------------------------------------
+        ;                       Freeing Methods
+        ;------------------------------------------------------------------
+        
+          ;----------------  free_pickUp_keepInHand  ----------------------
+
+            ; pick_up mode -> preconditions row 1
+            ; keep in hand -> preconditions row 2
+              (:method free_pickUp_keepInHand_4x2
+                  :parameters   (?brick1 - brick4x2 ?posGet ?pos2 - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (halt ?num1)(lvl ?brick1 ?num1) (clear ?brick1 ?posGet) 
+                    (next_pos ?posGet ?pos2) (clear ?brick1 ?pos2)
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) (on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (pick_up_4x2 ?brick1 ?posGet ?pos2 ?person1 ?section1 ?num1)
+                  )
+              )
+       
+          ;-----------------  free_pickUp_putAside  -----------------------
+
+            ; pick_up mode -> preconditions row 1
+            ; put aside -> no conditions
+              (:method free_pickUp_putAside_4x2
+                  :parameters   (?brick1 - brick4x2 ?posGet ?pos2 - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (halt ?num1)(lvl ?brick1 ?num1) (clear ?brick1 ?posGet)
+                    (next_pos ?posGet ?pos2) (clear ?brick1 ?pos2)
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) (on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (pick_up_4x2 ?brick1 ?posGet ?pos2 ?person1 ?section1 ?num1)
+                      (put_aside_4x2 ?brick1 ?person1)
+                  )
+              )
+
+          ;----------------  free_unstack_keepInHand  ---------------------
+
+            ; unstack mode -> preconditions row 1
+            ; keep in hand -> no conditions
+              (:method free_unstack_keepInHand_4x2
+                  :parameters   (?brick1 - brick4x2 ?brick2 ?brick3 - brick ?posGet ?pos2 - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (clear ?brick1 ?posGet) (on_pos ?brick1 ?posGet) (lvl ?brick1 ?num1)
+                    (on_top ?brick1 ?brick2) 
+                    (clear ?brick1 ?pos2) (on_pos ?brick1 ?pos2) (on_top ?brick1 ?brick3) 
+                    (next_pos ?posGet ?pos2) 
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) 
+                    ;(on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (unstack_4x2 ?brick1 ?brick2 ?brick3 ?posGet ?pos2 ?person1 ?section1 ?num1)
+                  )
+              )
+       
+          ;-----------------  free_unstack_putAside  ----------------------
+
+            ; unstack mode -> preconditions row 1
+            ; put aside -> no conditions
+              (:method free_unstack_putAside_4x2
+                  :parameters   (?brick1 - brick4x2 ?brick2 ?brick3 - brick ?posGet ?pos2 - position ?person1 - person ?section1 - section ?num1 - numero)
+                  :task (free ?brick1)
+                  :precondition (and
+                    (clear ?brick1 ?posGet) (on_pos ?brick1 ?posGet) (lvl ?brick1 ?num1)
+                    (on_top ?brick1 ?brick2) 
+                    (clear ?brick1 ?pos2) (on_pos ?brick1 ?pos2) (on_top ?brick1 ?brick3) 
+                    (next_pos ?posGet ?pos2) 
+                    (in_charge ?person1 ?section1) (in_sec ?posGet ?section1) 
+                    ;(on_pos ?brick1 ?posGet)
+                  )
+                  :ordered-subtasks (and
+                      (unstack_4x2 ?brick1 ?brick2 ?brick3 ?posGet ?pos2 ?person1 ?section1 ?num1)
+                      (put_aside_4x2 ?brick1 ?person1)
+                  )
+              )
+
+        ;------------------------------------------------------------------
+        ;                      UnFreeing Methods
+        ;------------------------------------------------------------------
+       
+          ;--------------------  unfree_putdown  --------------------------
+
+            ; put down mode -> preconditions row 1
+              (:method unfree_putdown_4x2
+                  :parameters   (?brick1 - brick4x2 ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num - numero)
+                  :task (unfree ?brick1 ?pos1)
+                  :precondition (and
+                    (free ?pos1) (free ?pos2) (next_pos ?pos1 ?pos2) (halt ?num)
+                    (on_side_table ?brick1)
+                    (in_charge ?person1 ?section1) 
+                    (in_sec ?pos1 ?section1) (hand_empty ?person1)
+                  )
+                  :ordered-subtasks (and
+                    (take_back_4x2 ?brick1 ?person1)
+                    (put_down_4x2 ?brick1 ?pos1 ?pos2 ?person1 ?section1 ?num)
+                  )
+              )
+
+          ;---------------------  unfree_stack  ---------------------------
+
+            ; stack mode -> preconditions row 1
+              (:method unfree_stack_4x2
+                  :parameters   (?brick1 - brick4x2 ?brick2 ?brick3 - brick ?pos1 ?pos2 - position ?person1 - person ?section1 - section ?num1 ?num2 - numero)
+                  :task (unfree ?brick1 ?pos1)
+                  :precondition (and
+                    (clear ?brick2 ?pos1) (clear ?brick3 ?pos2)
+                    (next_pos ?pos1 ?pos2)
+                    (plus_one ?num1 ?num2) (lvl ?brick2 ?num1) (lvl ?brick3 ?num1)
+                    (on_side_table ?brick1)
+                    (in_charge ?person1 ?section1) 
+                    (in_sec ?pos1 ?section1) (hand_empty ?person1)
+                  )
+                  :ordered-subtasks (and
+                    (take_back_4x2 ?brick1 ?person1)
+                    (stack_4x2 ?brick1 ?brick2 ?brick3 ?pos1 ?pos2 ?person1 ?section1 ?num1 ?num2)
+                  )
+              )
+        
+
+      ; Other Methods  --  brick6x2
+
+
+        ;------------------------------------------------------------------
+        ;                      UnFreeing Methods
+        ;------------------------------------------------------------------
+       
+          ;--------------------  unfree_putdown  --------------------------
+
+            ; put down mode -> preconditions row 1
+              (:method unfree_putdown_6x2
+                  :parameters   (?brick1 - brick6x2 ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num - numero)
+                  :task (unfree ?brick1 ?pos1)
+                  :precondition (and
+                    (free ?pos1) (free ?pos2) (next_pos ?pos1 ?pos2) 
+                    (halt ?num) (free ?pos3) (next_pos ?pos2 ?pos3) 
+                    (on_side_table ?brick1)
+                    (in_charge ?person1 ?section1) 
+                    (in_sec ?pos1 ?section1) (hand_empty ?person1)
+                  )
+                  :ordered-subtasks (and
+                    (take_back_6x2 ?brick1 ?person1)
+                    (put_down_6x2 ?brick1 ?pos1 ?pos2 ?pos3 ?person1 ?section1 ?num)
+                  )
+              )
+
+          ;-------------------  unfree_stack_free  ------------------------
+
+            ; stack mode -> preconditions row 1
+              (:method unfree_stack_free_6x2
+                  :parameters   (?brick1 - brick6x2 ?brick2 ?brick4 - brick ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num1 ?num2 - numero)
+                  :task (unfree ?brick1 ?pos1)
+                  :precondition (and
+                    (clear ?brick2 ?pos1) (clear ?brick4 ?pos3)
+                    (next_pos ?pos1 ?pos2) (next_pos ?pos2 ?pos3)
+                    (plus_one ?num1 ?num2) (lvl ?brick2 ?num1) (lvl ?brick4 ?num1)
+                    
+                    (free ?pos2)
+
+                    (on_side_table ?brick1)
+                    (in_charge ?person1 ?section1) 
+                    (in_sec ?pos1 ?section1) (hand_empty ?person1)
+                  )
+                  :ordered-subtasks (and
+                    (take_back_6x2 ?brick1 ?person1)
+                    (stack_free_6x2 ?brick1 ?brick2 ?brick4 ?pos1 ?pos2 ?pos3 ?person1 ?section1 ?num1 ?num2)
+                  )
+              )
+       
+          ;------------------  unfree_stack_notFree  ----------------------
+
+            ; stack mode -> preconditions row 1
+              (:method unfree_stack_notFree_6x2
+                  :parameters   (?brick1 - brick6x2 ?brick2 ?brick3 ?brick4 - brick ?pos1 ?pos2 ?pos3 - position ?person1 - person ?section1 - section ?num1 ?num2 ?numtmp - numero)
+                  :task (unfree ?brick1 ?pos1)
+                  :precondition (and
+                    (clear ?brick2 ?pos1) (clear ?brick4 ?pos3)
+                    (next_pos ?pos1 ?pos2) (next_pos ?pos2 ?pos3)
+                    (plus_one ?num1 ?num2) (lvl ?brick2 ?num1) (lvl ?brick4 ?num1)
+                    
+                    (clear ?brick3 ?pos2) (lvl ?brick3 ?numTmp) (less ?numTmp ?num2)
+
+                    (on_side_table ?brick1)
+                    (in_charge ?person1 ?section1) 
+                    (in_sec ?pos1 ?section1) (hand_empty ?person1)
+                  )
+                  :ordered-subtasks (and
+                    (take_back_6x2 ?brick1 ?person1)
+                    (stack_notfree_6x2 ?brick1 ?brick2 ?brick3 ?brick4 ?pos1 ?pos2 ?pos3 ?person1 ?section1 ?num1 ?num2 ?numTmp)
+                  )
+              )
+     
+
+   
+   
+   
+)
+
